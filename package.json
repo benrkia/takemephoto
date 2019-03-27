@@ -1,0 +1,11 @@
+{
+  "name": "takemephoto",
+  "version": "1.0.0",
+  "description": "this is a simple module can be added to your application in order to take a user's picture.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ilyasse Benrkia",
+  "license": "ISC"
+}
