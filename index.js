@@ -9,6 +9,11 @@ class TakeMePhoto {
         captureMsg='Capturer'
     }) {
 
+        this.config = {
+            started: false,
+            capturing: false,
+        }
+
         this.container = document.querySelector(`#${containerId}`);
         if(!this.container) {
             throw new Error('container must be a valid Html element');
@@ -29,10 +34,14 @@ class TakeMePhoto {
         timerSpan.style.display = 'block';
         this.timerSpan = timerSpan;
 
+        const capture = document.createElement('div');
+        this.capture = capture;
+
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
         this.canvas = canvas;
+        this.capture.appendChild(this.canvas);
 
         const captureButton = document.createElement('button');
         captureButton.textContent = captureMsg;
@@ -49,12 +58,20 @@ class TakeMePhoto {
     }
 
     start() {
-        this.container.appendChild(this.video);
-        this.container.appendChild(this.captureButton);
-        this.container.appendChild(this.timerSpan);
-        this.container.appendChild(this.canvas);
 
-        this.initStream();
+        const { started } = this.config;
+        
+        if(!started) {
+            this.config.started = true;
+
+            this.container.appendChild(this.video);
+            this.container.appendChild(this.captureButton);
+            this.container.appendChild(this.timerSpan);
+            this.container.appendChild(this.capture);
+
+            this.initStream();
+            this.initFilters();
+        }
     }
 
     async initStream() {
@@ -85,12 +102,20 @@ class TakeMePhoto {
     }
 
     takePicture() {
+
+        const { filter: { initialized } } = this.config;
+
+        if(!initialized) this.setupFilters();
+
         const context = this.canvas.getContext('2d');
         context.drawImage(this.video, 0, 0);
+
+        this.config.capturing = false;
     }
 
     captureListener() {
         this.captureButton.addEventListener("click", () => {
+            const { capturing } = this.config;
             const timer = (i, callback) => {
                 if( i>0 ){
                     this.timerSpan.innerHTML = `Be Ready! ${i}`;
@@ -100,7 +125,187 @@ class TakeMePhoto {
                 this.timerSpan.textContent = 'done';
                 callback();
             }
-            timer(3, this.takePicture);
+
+            if(!capturing) {
+                this.config.capturing = true;
+                timer(3, this.takePicture);
+            }
         });
+    }
+
+    /**
+     * Configure filters buttons and append them to the dom
+     * setup the click listeners
+    */
+    setupFilters() {
+        this.config.filter.initialized = true;
+        
+        const { filter: {filterNames, filterFuncs} } = this.config;
+
+        filterNames.map((filter, i) => {
+            const button = document.createElement('button');
+            button.textContent = filter;
+            button.className = 'takemephoto-filter'; // to give the users the ability to style the buttons
+            button.addEventListener('click', () => this.setupFilter(filterFuncs[i]));
+            
+            this.capture.appendChild(button);
+        });
+
+    }
+
+    /** 
+     * Setup a single filter each time the user clicks a filter button
+    */
+    setupFilter(filter) {
+        const filterContainer = document.createElement('div');
+        filterContainer.style = 'display: flex; flex-direction: row; justify-content: center; position: fixed; background-color: rgba(0, 0, 0, 0.5); height: 100%; width: 100%; top: 0; left: 0;';
+
+        const wrapper = document.createElement('div');
+        wrapper.id = 'takemephoto-wrapper'; // this will help the user style takeme-photo elements
+        wrapper.style = 'width: 400px; align-self: center; display: grid; grid-template-columns: 1fr 1fr; grid-gap: 4px;';
+
+        const cancel = document.createElement('button');
+        cancel.id = 'takemephoto-cancel'; // gives the user the ability to style the cancel button
+        cancel.textContent = 'Cancel';
+        wrapper.appendChild(cancel);
+
+        const apply = document.createElement('button');
+        apply.id = 'takemephoto-apply'; // gives the user the ability to style the apply button
+        apply.textContent = 'Apply';
+        wrapper.appendChild(apply);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 400;
+        canvas.height = 400;
+        canvas.style = 'grid-column: 1/ span 2;';
+        canvas.getContext('2d').drawImage(this.canvas, 0, 0);
+        wrapper.appendChild(canvas);
+
+        // slider starts
+        const sliderWrapper = document.createElement('div');
+        sliderWrapper.style = 'grid-column: 1/ span 2;display: grid;grid-template-columns: 9fr 1fr;';
+
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = filter.min;
+        slider.max = filter.max;
+        slider.value = filter.default;
+
+        sliderWrapper.appendChild(slider);
+
+        const span = document.createElement('span');
+        span.textContent = `${filter.default}${filter.unit}`;
+        span.style = 'color: white; font-weight: bold;';
+        sliderWrapper.appendChild(span);
+
+        wrapper.appendChild(sliderWrapper);
+
+        // listeners setup
+        slider.addEventListener('input', (e) => {
+            span.textContent = `${e.target.value}${filter.unit}`;
+            this.applyFilter(canvas, e.target.value, filter);
+        });
+
+        cancel.addEventListener('click', () => {
+            filterContainer.remove();
+        });
+
+        apply.addEventListener('click', () => {
+            const context = this.canvas.getContext('2d');
+            context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            context.drawImage(canvas, 0, 0);
+            filterContainer.remove();
+        });
+
+        filterContainer.addEventListener('click', (e) => {
+            if(e.target === filterContainer) {
+                filterContainer.remove();
+            }
+        });
+
+        filterContainer.appendChild(wrapper);
+        this.container.appendChild(filterContainer);
+    }
+
+    /** 
+     * this function applies the given filter to the given canvas
+    */
+   applyFilter(canvas, value, filter) {
+
+        const { name, unit } = filter;
+
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.filter = `${name}(${value}${unit})`;
+        ctx.drawImage(this.canvas, 0, 0);
+   }
+
+    /**
+     * Initialize filters configuration from functions names to filters properties...  
+    */
+    initFilters() {
+        this.config.filter = {
+            initialized: false,
+            filterNames: ['Blur', 'Brightness', 'Contrast', 'Grayscale', 'Hue rotate', 'Opacity', 'Saturate', 'Sepia'],
+            filterFuncs: [
+                {
+                    name: 'blur',
+                    unit: 'px',
+                    default: 0,
+                    min: 0,
+                    max: 50,
+                },
+                {
+                    name: 'brightness',
+                    unit: '%',
+                    default: 100,
+                    min: 0,
+                    max: 200,
+                },
+                {
+                    name: 'contrast',
+                    unit: '%',
+                    default: 100,
+                    min: 0,
+                    max: 100,
+                },
+                {
+                    name: 'grayscale',
+                    unit: '%',
+                    default: 0,
+                    min: 0,
+                    max: 100,
+                },
+                {
+                    name: 'hue-rotate',
+                    unit: 'deg',
+                    default: 0,
+                    min: 0,
+                    max: 360,
+                },
+                {
+                    name: 'opacity',
+                    unit: '%',
+                    default: 100,
+                    min: 0,
+                    max: 100,
+                },
+                {
+                    name: 'saturate',
+                    unit: '%',
+                    default: 100,
+                    min: 0,
+                    max: 100,
+                },
+                {
+                    name: 'sepia',
+                    unit: '%',
+                    default: 0,
+                    min: 0,
+                    max: 100,
+                }
+            ],
+
+        }
     }
 }
