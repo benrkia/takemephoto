@@ -24,14 +24,13 @@ class TakeMePhoto {
         video.height = height;
         video.autoplay = true;
         video.loop = true;
+        video.className = 'stream-video';
         this.video = video;
 
         const timerSpan = document.createElement('span');
         timerSpan.textContent = '';
-        timerSpan.style.fontSize = '50px';
-        timerSpan.style.fontWeight = 'bold';
-        timerSpan.style.color = 'red';
-        timerSpan.style.display = 'block';
+        timerSpan.style.display = 'none';
+        timerSpan.className = 'timer-span';
         this.timerSpan = timerSpan;
 
         const capture = document.createElement('div');
@@ -40,11 +39,13 @@ class TakeMePhoto {
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
+        canvas.className = 'main-canvas';
         this.canvas = canvas;
         this.capture.appendChild(this.canvas);
 
         const captureButton = document.createElement('button');
         captureButton.textContent = captureMsg;
+        captureButton.className = 'capture-button';
         this.captureButton = captureButton;
 
         this.constraints = {
@@ -88,7 +89,7 @@ class TakeMePhoto {
         if(this.defaultVideoPath) {
             this.video.src = this.defaultVideoPath;
         }
-        
+        this.timerSpan.style.display = 'inline-block';
         this.timerSpan.textContent = e;
 
         this.captureButton.remove();
@@ -115,6 +116,9 @@ class TakeMePhoto {
 
     captureListener() {
         this.captureButton.addEventListener("click", () => {
+
+            this.timerSpan.style.display = 'inline-block';
+
             const { capturing } = this.config;
             const timer = (i, callback) => {
                 if( i>0 ){
@@ -142,22 +146,58 @@ class TakeMePhoto {
         
         const { filter: {filterNames, filterFuncs} } = this.config;
 
+        const filterWrapper = document.createElement('div');
+        filterWrapper.className = 'filter-wrapper';
+
+        const controlWrapper = document.createElement('div');
+        controlWrapper.className = 'control-wrapper';
+
         filterNames.map((filter, i) => {
             const button = document.createElement('button');
             button.textContent = filter;
             button.className = 'takemephoto-btn'; // to give the users the ability to style the buttons
             button.addEventListener('click', () => this.setupFilter(filterFuncs[i]) );
             
-            this.capture.appendChild(button);
+            filterWrapper.appendChild(button);
         });
+        this.capture.appendChild(filterWrapper);
 
         const cropButton = document.createElement('button');
         cropButton.textContent = 'Crop';
         cropButton.className = 'takemephoto-btn'; // to give the users the ability to style the buttons
         cropButton.addEventListener('click', () => this.setupCrop() );
         
-        this.capture.appendChild(cropButton);
+        controlWrapper.appendChild(cropButton);
 
+        const downloadButton = document.createElement('button');
+        downloadButton.textContent = 'Download';
+        downloadButton.className = 'takemephoto-btn'; // to give the users the ability to style the buttons
+        downloadButton.addEventListener('click', () => {
+
+            this.generateDownloadLink().then(link => {
+                link.click();
+            });
+        } );
+
+        controlWrapper.appendChild(downloadButton);
+
+        this.capture.appendChild(controlWrapper);
+    }
+
+    async generateDownloadLink() {
+        const imgdata = await this.canvas.toDataURL('image/png');
+        const adjustedData = imgdata.replace(/^data:image\/png/,'data:application/octet-stream');
+
+        const a = document.createElement('a');
+        a.download = this.generateRandomName();
+        a.href = adjustedData;
+        return a;
+    }
+
+    generateRandomName() {
+        let name = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5);
+        name += '.png';
+        return name;
     }
 
     /** 

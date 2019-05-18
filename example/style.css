@@ -1,0 +1,65 @@
+.stream-video {
+    margin-bottom: 10px;
+    display: block;
+}
+
+.capture-button {
+    outline: none;
+    display: inline-block;
+    background: #34495e;
+    padding: 10px 20px;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    margin-right: 5px;
+}
+
+.timer-span {
+    display: inline-block;
+    border: 1px solid #34495e;
+    padding: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 5px;
+}
+
+.main-canvas {
+    margin-top: 10px;
+}
+
+.filter-wrapper, .control-wrapper {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-gap: 5px;
+    margin: 10px 0;
+}
+
+.takemephoto-btn {
+    padding: 10px;
+    border: none;
+    font-weight: bold;
+    background-color: #bdc3c7;
+    color: #34495e;
+    border-bottom: 2px solid #34495e;
+}
+
+.takemephoto-btn:hover {
+    transition: 0.5s ease;
+    background-color: #34495e;
+    color: #bdc3c7;
+    border-bottom: 2px solid #bdc3c7;
+}
+
+.control-wrapper > .takemephoto-btn {
+    background: none;
+    color: #1abc9c;
+    border-bottom: 2px solid #1abc9c;
+}
+
+.control-wrapper > .takemephoto-btn:hover {
+    background-color: #1abc9c;
+    color: white;
+    border-bottom: 2px solid #1abc9c;
+}
